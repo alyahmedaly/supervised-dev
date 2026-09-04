@@ -42,7 +42,7 @@ resolved: null # set at close
 - `## Pinned rules` — 3–6 invariants this change must not break, from the repo's agent instructions or
   the plan. Tester writes one pin test per rule; pins pass on base and after.
 - `## Acceptance` — pass/fail bullets, each ending in an oracle tag such as `(oracle: tester)` or
-  `(oracle: review)`. No oracle means it's a wish — give it one or move it to scope.
+  `(oracle: review)`. No oracle means it's a wish — give it one or move it to Out of scope.
 - `## Verification` — the exact fenced commands; these ARE the named oracles, nothing else.
 - `## Alternatives considered` — optional at open; only what was actually weighed, one bold-led
   paragraph each, with why it lost.
@@ -63,7 +63,7 @@ resolved: null # set at close
 
 ## Worked example — open
 
-```yaml
+````markdown
 ---
 id: '042'
 title: Add --format json to the report command
@@ -82,40 +82,80 @@ mode: AFK
 created: 2026-01-14
 resolved: null
 ---
+
+## Question
+
+Can `tooling-cli report` emit machine-readable JSON instead of only the table it prints today?
+
+## Required changes
+
+- Add a `--format <table|json>` flag to `report`, default `table`.
+- When `--format json`, print one JSON object per report row to stdout, newline-delimited.
+- Reject an unknown `--format` value with a non-zero exit and a one-line stderr message.
+
+## Out of scope
+
+- Reworking the table layout itself — owned by ticket 038.
+- A `--format csv` mode — not requested, no ticket yet.
+- Parsing the JSON downstream — that is the consumer's job.
+
+## Pinned rules
+
+- `report` writes only the report body to stdout (see `cli/report.ts`).
+- Exit code 0 only when every requested row printed.
+- Flag parsing stays in `cli/args.ts`; commands never read `process.argv` directly.
+
+## Acceptance
+
+- `report --format json` on a 3-row fixture prints 3 valid JSON lines (oracle: tester)
+- `report` with no flag prints the existing table, byte-for-byte (oracle: tester)
+- `report --format xml` exits 1 naming the bad value on stderr (oracle: tester)
+- lint and typecheck pass (oracle: `npm run verify`)
+
+## Verification
+
+```
+npm run verify
 ```
 
-- `## Question` — Can `tooling-cli report` emit machine-readable JSON instead of only the table it
-  prints today?
-- `## Required changes` — Add `--format <table|json>` flag, default `table`. When `json`, print one
-  JSON object per row to stdout, newline-delimited. Reject an unknown value with a non-zero exit and a
-  one-line stderr message.
-- `## Out of scope` — Table layout itself (ticket 038). A `--format csv` mode (no ticket yet). Parsing
-  the JSON downstream (consumer's job).
-- `## Pinned rules` — `report` writes only the report body to stdout (`cli/report.ts`). Exit code 0 only
-  when every row printed. Flag parsing stays in `cli/args.ts`.
-- `## Acceptance` — 3-row fixture with `--format json` prints 3 valid JSON lines (oracle: tester). No
-  flag prints the existing table byte-for-byte (oracle: tester). `--format xml` exits 1 naming the bad
-  value (oracle: tester). Lint and typecheck pass (oracle: `npm run verify`).
-- `## Verification` — `npm run verify`.
-- `## Alternatives considered` — **Separate `report-json` command.** Rejected: doubles the surface for
-  one output switch, and the two commands would drift on filtering flags.
-- `## Notes` — Land after ticket 038 (column rename) merges, so JSON keys match the final column names.
+## Alternatives considered
+
+**Separate `report-json` command.** Rejected: doubles the surface for one output switch, and the two
+commands would drift on filtering flags.
+
+## Notes
+
+Land after ticket 038 (column rename) merges, so JSON keys match the final column names.
+````
 
 ## Worked example — closed (excerpt)
 
-```yaml
+```markdown
 ---
 id: '042'
 status: closed
 resolved: '2026-01-16'
 ---
-```
 
-- `### Decision` — Shipped `--format json` on `report`, newline-delimited, default unchanged.
-- `### Alternatives considered` — Separate `report-json` command; rejected for doubling the flag
-  surface (see Alternatives considered above).
-- `### Consequences` — Cost: one new flag branch in `cli/args.ts`, one new fixture file. Bought:
-  scriptable report output without parsing the table.
-- `### Verification` — Pins: 4/4 passed at `a1b2c3d`.
+## Outcome
+
+### Decision
+
+Shipped `--format json` on `report`, newline-delimited, default unchanged.
+
+### Alternatives considered
+
+Separate `report-json` command; rejected for doubling the flag surface (see Alternatives considered
+above).
+
+### Consequences
+
+Cost: one new flag branch in `cli/args.ts`, one new fixture file. Bought: scriptable report output
+without parsing the table.
+
+### Verification
+
+Pins: 4/4 passed at `a1b2c3d`.
+```
 
 The Outcome section's shape follows [DeepSeek Harness Agent Notes](https://github.com/deepseek-ai/deepseek-harness/blob/master/.agents/notes/README.md) (MIT); the prose above is original.
