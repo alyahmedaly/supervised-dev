@@ -25,14 +25,21 @@ stubs when handed the complete specification up front, so work that once needed 
 half-done output now sits a row lower — the pipeline buys independent judgement on a diff, not completion.
 Escalating past the row the work sits in is a cost with no buyer. Name the row you picked, and why, in your first message so the user can push back before the delegation is paid for.
 
-## Entry requirements
+## Phase 0 — Ticket
 
-Before starting, confirm you have:
+The pipeline runs on a ticket in the shape of `references/ticket-shape.md`.
 
-- Ticket: what to build or fix, scope, out-of-scope list
-- Acceptance criteria: concrete pass/fail conditions
-
-If either is missing, ask the user before proceeding. Anything answerable from the repo — base SHA, test commands, conventions — you find yourself.
+- If the user hands you a ticket, validate it against that shape: every Acceptance bullet has an
+  oracle; Out of scope and Pinned rules are present; `mode: AFK`; `effort: S|M`.
+- If the user hands you prose, inspect the repo and DRAFT the ticket yourself in that shape, write it
+  to the repo's ticket directory, show it, and wait for approval. This is the one question the pipeline
+  blocks on: the ticket is the scope contract.
+- If the work is L, or is N similar units, draft a plan per `references/plan-shape.md` plus its
+  tickets, and run one ticket at a time.
+- Anything answerable from the repo — base SHA, commands, conventions — you fill in yourself; never
+  ask the user for it.
+- Only `mode: AFK` tickets enter Phase 1.
+- Run the supersession check (`references/ticket-shape.md`) before writing a new ticket.
 
 ## Roles and tools
 
@@ -130,6 +137,21 @@ Inspect the repository to understand current state. Clarify only decisions with 
 - Capability preflight: confirm the tools the plan leans on actually work here, before planning around them — package registry reachability, auth for any host CLI, worktree cleanliness, write access (incidents.md #23). Never route around a failure by hand-editing a lockfile.
 - Working branch or worktree: create it before recording base SHA, named per repo convention, and record the branch name in the ledger. A fresh worktree has no `node_modules`, so a bare `npx <tool>` inside it can resolve a different tool version than the main checkout — run formatters and linters from an installed tree, or install first.
 
+A ticket in the shape of `references/ticket-shape.md` already answers most of the above:
+
+| Ticket section        | Phase 1 field                             |
+| --------------------- | ----------------------------------------- |
+| Required changes      | File scope                                |
+| Out of scope          | Out-of-scope list                         |
+| Pinned rules          | Architecture rules to pin                 |
+| Acceptance            | Acceptance criteria, oracle per criterion |
+| Verification          | Verification command, full gate set seed  |
+| `source:`             | Files to read                             |
+| `blocked_by`/`blocks` | Sequencing                                |
+| `mode`/`effort`       | Eligibility                               |
+
+The ticket does not carry the expected-red inventory, the CI trigger map, or the capability preflight — derive those in Phase 1 regardless.
+
 Run: `git rev-parse HEAD` to record base SHA.
 
 #### Brief hygiene
@@ -223,6 +245,8 @@ happened: "pushed" means "committed" until `git rev-parse <remote-ref>` says oth
 Run that command yourself after every push; do not trust the push command's own exit status as the signal.
 
 #### Tickets made of repeatable units
+
+N similar units is one plan and N tickets, serial where files overlap — see `references/plan-shape.md`.
 
 When the ticket is N similar units (N services, N packages, N call sites), do not hand one agent all
 N — a single oversized batch burns hours on archaeology for one file where a re-briefed batch does three
@@ -468,6 +492,7 @@ Deliverable requires all of:
 - Worktree clean, commits pushed
 - PR open (if CI needs one)
 - CI green or external blocker explicitly named
+- Ticket closed: `status: closed`, `resolved:` set, `## Outcome` written per `references/ticket-shape.md`, committed in the same PR. If the repo has its own decision-record convention, write the record there instead and link it from the ticket.
 
 Distinguish an infrastructure red from a code red before it reaches the verdict (incidents.md #18). Two
 independent runs failing identically on the same non-code cause is the evidence that makes it nameable as
@@ -561,7 +586,7 @@ worktree root. Never a tracked doc reviewers must read past. Durable conclusions
 its follow-up; delete the ledger when the PR merges. Repo-wide formatters and linters typically scan the
 **working tree**, not the index — every file on disk, tracked or not — so a ledger left in the repo can
 fail the pre-commit or pre-push hook on its own formatting; a ledger path outside the repo avoids the
-whole class.
+whole class. The ticket is tracked and ships in the PR; the ledger never does.
 
 ## Stopping rules
 

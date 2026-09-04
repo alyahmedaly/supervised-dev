@@ -47,7 +47,9 @@ the `model_reasoning_effort` key spelling).
 
 Invoke `/supervised-dev` with a ticket description and concrete acceptance criteria. The skill asks for
 whichever of the two is missing before it starts; everything else (base SHA, verification commands,
-repo conventions) it reads from the repository itself.
+repo conventions) it reads from the repository itself. Hand it a ticket in the shape of
+`references/ticket-shape.md`, or hand it prose and it drafts the ticket in that shape and waits for your
+approval before Phase 1.
 
 ## Layout
 
@@ -58,6 +60,8 @@ repo conventions) it reads from the repository itself.
 | `scripts/sync-claude-agents.sh` | Generates the Claude Code `subagent-*.md` agents from `roles/*.md`       |
 | `references/incidents.md`       | The incidents behind the pipeline's rules                                |
 | `references/codex-host.md`      | Codex CLI adapter detail: exec command, sandbox flags, unconfirmed items |
+| `references/ticket-shape.md`    | The ticket contract: frontmatter, body sections, worked example          |
+| `references/plan-shape.md`      | The plan contract for tickets made of N repeatable units                 |
 
 ## License
 
