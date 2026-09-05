@@ -29,6 +29,7 @@ source: # repo-relative paths the agent must read; point, do not paste
   - docs/<program>/plan.md
 effort: S | M # L is not a ticket; split it through a plan first
 mode: AFK | pair # only AFK enters the pipeline
+loop: full | light # light = tester + implementer only, supervisor verifies; see SKILL.md "Light loop"
 created: YYYY-MM-DD
 resolved: null # set at close
 ---
@@ -79,6 +80,7 @@ source:
   - docs/tooling-cli/plan.md
 effort: S
 mode: AFK
+loop: full
 created: 2026-01-14
 resolved: null
 ---

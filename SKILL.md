@@ -17,6 +17,7 @@ Downshift to the first row that covers the work:
 | --------------------------------------------------- | -------------------------------------------- |
 | One-line fix, typo, mechanical rename, comment      | Yourself, plus the one relevant check        |
 | Bounded change, one or two files, obvious oracle    | Yourself, plus one reviewer pass on the diff |
+| Copy-and-wrap or move-and-rewire: oracle is diff vs source plus existing suite | Light loop — see "Light loop" below |
 | Real feature or refactor, non-obvious failure modes | Full pipeline below                          |
 | Repo-wide sweep of N near-identical units           | Full pipeline, batched — see Phase 3         |
 
@@ -25,12 +26,35 @@ stubs when handed the complete specification up front, so work that once needed 
 half-done output now sits a row lower — the pipeline buys independent judgement on a diff, not completion.
 Escalating past the row the work sits in is a cost with no buyer. Name the row you picked, and why, in your first message so the user can push back before the delegation is paid for.
 
+## Light loop
+
+For work whose diff is verifiable by one mechanical comparison — a file moved from one directory to another with only import lines changed, plus a thin wrapper — the reviewer and simplifier re-read a diff that `diff -r` already judges. Run tester and implementer only; the supervisor does the read-only verification.
+
+The ticket carries `loop: light` (see `references/ticket-shape.md`); Phase 0 sets it from the downshift row. Phase 4 and Phase 7's reviewer/simplifier dispatch are skipped. Everything else — tester first, implementer, oracles, push verification, ticket close — is unchanged.
+
+Supervisor verification checklist for a light-loop ticket, run at the implementer's head SHA:
+
+```
+diff -r <source dir> <destination dir> --exclude=node_modules --exclude=dist | grep -Ev '^(<|>) *import|^(<|>) *} from|^(diff|---|Only in)'   # expect empty
+git ls-files <destination dir> | grep -E 'node_modules|/dist/|\.tsbuildinfo|\.DS_Store'   # expect empty
+grep -rnE "^export (type|interface|enum) <Name>" <repo source roots> for each exported type the diff adds   # one hit per name
+<ticket Verification command>   # exact pass/total
+```
+
+Escalate to the full loop mid-ticket, and dispatch Phase 4 on the same head SHA, when any of these hold:
+
+- The first diff command above prints a non-import hunk.
+- The implementer's return lists a non-empty "deviations from ticket".
+- The tester's parity pins needed a threshold, tolerance, or normalisation the legacy suite did not have.
+
+Across sibling light-loop tickets, reuse the same tester and implementer agents via `SendMessage` with a delta brief — the re-read of repo and conventions is the cost being cut, and a fresh agent pays it again.
+
 ## Phase 0 — Ticket
 
 The pipeline runs on a ticket in the shape of `references/ticket-shape.md`.
 
 - If the user hands you a ticket, validate it against that shape: every Acceptance bullet has an
-  oracle; Out of scope and Pinned rules are present; `mode: AFK`; `effort: S|M`.
+  oracle; Out of scope and Pinned rules are present; `mode: AFK`; `effort: S|M`; `loop: full|light` set per the downshift table.
 - If the user hands you prose, inspect the repo and DRAFT the ticket yourself in that shape, write it
   to the repo's ticket directory, show it, and wait for approval. This is the one question the pipeline
   blocks on: the ticket is the scope contract.
