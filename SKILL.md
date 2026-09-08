@@ -56,14 +56,56 @@ The pipeline runs on a ticket in the shape of `references/ticket-shape.md`.
 - If the user hands you a ticket, validate it against that shape: every Acceptance bullet has an
   oracle; Out of scope and Pinned rules are present; `mode: AFK`; `effort: S|M`; `loop: full|light` set per the downshift table.
 - If the user hands you prose, inspect the repo and DRAFT the ticket yourself in that shape, write it
-  to the repo's ticket directory, show it, and wait for approval. This is the one question the pipeline
-  blocks on: the ticket is the scope contract.
+  to the repo's ticket directory, show it, and wait for approval. Phase 0 is the only place the pipeline
+  blocks on the user — the ticket is the scope contract, and the intent pass below is part of that block.
 - If the work is L, or is N similar units, draft a plan per `references/plan-shape.md` plus its
   tickets, and run one ticket at a time.
 - Anything answerable from the repo — base SHA, commands, conventions — you fill in yourself; never
   ask the user for it.
-- Only `mode: AFK` tickets enter Phase 1.
+- Run the intent pass below over every ticket that arrives with `intent_recorded: null`, before any
+  delegation — one you drafted, and one the user handed you. A ticket the user wrote with an agent carries
+  that agent's choices too.
+- Only `mode: AFK` tickets enter Phase 1, and only with `intent_recorded:` set.
 - Run the supersession check (`references/ticket-shape.md`) before writing a new ticket.
+
+### Intent pass
+
+A ticket an agent drafted reads as settled work, which is exactly what hides the choices the agent made
+on its own. The intent pass is an interactive review of those choices: the user reads each ticket by
+answering for it, and the answers land in the ticket as `## Recorded intent`.
+
+Ask about choices, not facts. A repo fact — test command, conventions, base SHA — you answer yourself
+and never ask. A load-bearing choice the drafter made unilaterally you ask **even when the ticket already
+states it**: the ticket stating it is what makes the question worth asking, because a choice the user
+confirmed and a choice the drafter drifted into look identical on the page.
+
+Two passes, after every ticket is drafted and before any delegation:
+
+1. **Plan pass.** Choices shared across tickets — framework, storage, auth, wire format — asked once and
+   recorded in the plan's `## Decision`, tagged `user-decided`. Tickets reference the plan and never
+   re-ask. Without this pass, ten tickets ask the framework question ten times.
+2. **Ticket pass.** Enumerate every candidate question across all tickets, rank each by how much work a
+   wrong answer throws away, cut to the budget, then ask in dependency order.
+
+Budget, because attention is the scarce resource here and ten tickets at four questions each is a wall
+nobody reads:
+
+- 1 question per ticket minimum, 4 maximum.
+- Plan-wide total: `<ticket count> + 4`. Spend the slack on the tickets whose wrong answer costs most.
+- Pack four questions per `AskUserQuestion` call, drawn **across** tickets, with `header` naming the
+  ticket id. Ten one-question tickets are three prompts, not ten.
+
+Question shape: option 1 is what the ticket currently says, labelled `(Recommended)`, with its reason
+grounded in the repo wherever the repo has evidence — "`apps/portal` already runs Next 15", not taste.
+Options 2–3 are the live alternatives. Taking the recommendation is a confirmation; taking another is an
+override, and an override records the user's own words verbatim.
+
+Candidates below the cut are not dropped into silence. Write each into the ticket as an `Assumed.` entry
+in `## Recorded intent`. An assumption the user can read and reverse costs no prompt; an assumption
+nobody wrote down is the drift this pass exists to catch.
+
+An override that invalidates a sibling ticket sends that sibling back for a redraft plus one more
+question. One redraft round, then proceed.
 
 ## Roles and tools
 
@@ -165,6 +207,7 @@ A ticket in the shape of `references/ticket-shape.md` already answers most of th
 
 | Ticket section        | Phase 1 field                             |
 | --------------------- | ----------------------------------------- |
+| Recorded intent       | Known decisions                           |
 | Required changes      | File scope                                |
 | Out of scope          | Out-of-scope list                         |
 | Pinned rules          | Architecture rules to pin                 |
@@ -175,6 +218,9 @@ A ticket in the shape of `references/ticket-shape.md` already answers most of th
 | `mode`/`effort`       | Eligibility                               |
 
 The ticket does not carry the expected-red inventory, the CI trigger map, or the capability preflight — derive those in Phase 1 regardless.
+
+A recorded-intent decision that is testable is already a pinned rule (`references/ticket-shape.md`); the
+rest are constraints you carry into the briefs, not tests.
 
 Run: `git rev-parse HEAD` to record base SHA.
 
@@ -188,6 +234,9 @@ Every template below is a contract, not prose. Applies to all four roles:
   Ban _adjectives_, not status lines. Do not write "hold all findings for the final response" or otherwise suppress narration: models already go quiet through long tool chains, and a silent agent is indistinguishable from a stalled one. Ask for a line when it starts, a line when it changes direction, and the exact fields at the end.
 - **A sent brief is not a started task.** After delegating, confirm the agent actually picked the work up — new commits, or an agent-list check — instead of assuming a delivered message equals work in progress (incidents.md #5).
 - **Say the user is not watching.** Every brief opens with it: the agent is operating autonomously, nobody can answer mid-task, so "shall I apply this?" blocks the work. Reversible steps that follow from the brief proceed without asking; only destructive actions and genuine scope changes stop. Without this, an agent describes its next step and ends the turn, and the step stays undone until you reply.
+- **Point at recorded intent; never re-open it.** Briefs cite `<ticket path>` `## Recorded intent` rather
+  than pasting the decisions. An agent that reconsiders a recorded choice is re-running the intent pass
+  with nobody in the room, and the answer it invents outranks nothing.
 - **Carry the scope clause.** Deliver what the brief asks at the scope asked; make routine judgment calls yourself; if the ticket looks mistaken, say so in one sentence and continue as asked rather than narrowing, widening, or transforming it. A pre-existing bug, a nearby performance smell, or undocumented behaviour found while working is a follow-up line in the return, not a change in this diff. Current models expand scope on their own judgment far more readily than they omit work, and an unasked-for improvement lands in the same diff the reviewer must clear.
 - **Ask for surgical edits.** Say that edit tokens are to be minimized and a file should be patched, not rewritten, where that does not change the result. Left alone, models rewrite whole files for small changes — same content, but a diff the reviewer cannot read and a base SHA comparison full of noise.
 - **Do not ask an agent to double-check itself.** Agents already verify their own work; "re-verify before reporting" or "add a final verification step" compounds with that and buys tokens, not quality. Brief the oracle instead — the exact command whose output decides the criterion. Supervisor verification is a different role reading a different signal, not the same agent looking twice.
@@ -440,7 +489,8 @@ costs, and ask — filing a half-met criterion as backlog on your own can make t
 
 Then combine reviewer findings, blocking simplifier findings, and your own five-axis check:
 
-1. Ticket/spec fidelity
+1. Ticket/spec fidelity — acceptance criteria, plus `## Recorded intent`, including any `Assumed.` entry
+   the diff quietly contradicts
 2. Runtime correctness
 3. Architecture fit — the Phase 1 architecture rules, package boundaries, test conventions
 4. Test integrity — can tests produce false green?
@@ -625,7 +675,8 @@ whole class. The ticket is tracked and ships in the PR; the ledger never does.
   the verdict. Named in Phase 1 or not run.
 - Once acceptance passes on exact SHA and the blocking set is empty, stop. Do not look for optional improvements.
 - P2 and S2 after freeze go to a follow-up ticket. P3 and S3 are dropped without a ticket.
-- Do not ask the user technical questions answerable from the repo.
+- Do not ask the user technical questions answerable from the repo. The Phase 0 intent pass is not an
+  exception to this: it asks about choices the repo cannot settle, and it is over before Phase 1 starts.
 - The simplifier audits what this diff added. It does not open a repository-wide cleanup.
 
 ## Severity reference

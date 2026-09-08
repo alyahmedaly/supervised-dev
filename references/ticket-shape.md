@@ -26,11 +26,13 @@ blocks: []
 gate: null # optional: the named gate this ticket satisfies
 supersedes: null # optional: path of the ticket or plan this replaces
 source: # repo-relative paths the agent must read; point, do not paste
+  - intent/<slug>.md # optional: the upstream intent this ticket serves
   - docs/<program>/plan.md
 effort: S | M # L is not a ticket; split it through a plan first
 mode: AFK | pair # only AFK enters the pipeline
 loop: full | light # light = tester + implementer only, supervisor verifies; see SKILL.md "Light loop"
 created: YYYY-MM-DD
+intent_recorded: null # date the intent pass ran; AFK with null here is invalid
 resolved: null # set at close
 ---
 ```
@@ -38,6 +40,11 @@ resolved: null # set at close
 ## Body, canonical section names, in this order
 
 - `## Question` — one falsifiable question the ticket answers; stands without the solution.
+- `## Recorded intent` — the choices the ticket rests on, from the intent pass (see SKILL.md "Intent
+  pass"). One bold-led paragraph each, two kinds, tagged. A **decision** the user answered: what was
+  chosen, and the reason. An **`Assumed.`** entry the drafter made without asking, because it lost the
+  question budget — written down so the user can reverse it by reading. An answer that went against the
+  recommendation is tagged `Override` and carries the user's own words verbatim, never paraphrased.
 - `## Required changes` — scope as imperative bullets; future tense is fine here.
 - `## Out of scope` — what neighbours own; name the ticket that owns each item.
 - `## Pinned rules` — 3–6 invariants this change must not break, from the repo's agent instructions or
@@ -49,14 +56,20 @@ resolved: null # set at close
   paragraph each, with why it lost.
 - `## Notes` — sequencing, boundaries with neighbours.
 - `## Outcome` — added only at close, by the supervisor, same PR. Four H3s: `### Decision` (what
-  shipped, present tense); `### Alternatives considered` (what it beat and why — recorded, never
-  invented, say so if none were weighed); `### Consequences` (cost AND benefit); `### Verification`
-  (pins now, as `passed/total` with the SHA measured at).
+  shipped, present tense, plus any drift from `## Recorded intent`); `### Alternatives considered` (what
+  it beat and why — recorded, never invented, say so if none were weighed); `### Consequences` (cost AND
+  benefit); `### Verification` (pins now, as `passed/total` with the SHA measured at).
 
 ## Rules
 
 - Status agrees with body: `open` has no Outcome; `closed` has Outcome and `resolved:`; `rejected`
   freezes the proposal and carries the one-line reason in `## Notes`.
+- Every ticket carries `## Recorded intent` and a date in `intent_recorded:`. `mode: AFK` with
+  `intent_recorded: null` is invalid — nobody is watching once Phase 2 starts, so an unanswered
+  load-bearing choice cannot ride into the pipeline.
+- Recorded intent is provenance, not weighing. `## Alternatives considered` is what the drafter weighed;
+  `## Recorded intent` is what the user decided and what the drafter assumed unasked. A recorded decision
+  that is testable also earns a `## Pinned rules` entry — intent keeps the why, the pin keeps the check.
 - Code blocks in a ticket are contract targets, labelled as such — never implementation hints.
 - Supersession check: search existing tickets and plans for the same scope before writing a new one.
   Extend or set `supersedes:`; never duplicate.
@@ -66,14 +79,14 @@ resolved: null # set at close
 
 ````markdown
 ---
-id: '042'
-title: Add --format json to the report command
+id: '041'
+title: Add --format table|json flag to report
 type: task
 labels: [cli, output]
 status: open
 assignee: null
-blocked_by: []
-blocks: []
+blocked_by: ['038']
+blocks: ['042']
 gate: null
 supersedes: null
 source:
@@ -82,12 +95,25 @@ effort: S
 mode: AFK
 loop: full
 created: 2026-01-14
+intent_recorded: 2026-01-14
 resolved: null
 ---
 
 ## Question
 
 Can `tooling-cli report` emit machine-readable JSON instead of only the table it prints today?
+
+## Recorded intent
+
+**Output framing.** One JSON object per row, newline-delimited, not a single top-level array.
+Recommended — the table already streams row by row, so NDJSON keeps `report` usable in a pipe and
+needs no buffering.
+
+**Flag surface.** `--format <table|json>` on the existing command. `Override` — recommendation was a
+`--json` boolean. User: "we will want csv next quarter, don't paint us into a boolean".
+
+**`Assumed.`** Unknown `--format` values exit 1 rather than falling back to `table`. Not asked; the
+repo's other flags already reject unknown values this way.
 
 ## Required changes
 
@@ -98,8 +124,8 @@ Can `tooling-cli report` emit machine-readable JSON instead of only the table it
 ## Out of scope
 
 - Reworking the table layout itself — owned by ticket 038.
-- A `--format csv` mode — not requested, no ticket yet.
-- Parsing the JSON downstream — that is the consumer's job.
+- A `--format csv` mode — anticipated in Recorded intent, but no ticket yet.
+- Consuming the JSON in the CI summary — owned by ticket 042.
 
 ## Pinned rules
 
@@ -127,14 +153,14 @@ commands would drift on filtering flags.
 
 ## Notes
 
-Land after ticket 038 (column rename) merges, so JSON keys match the final column names.
+Blocked on 038 (column rename), so JSON keys match the final column names. 042 consumes this output.
 ````
 
 ## Worked example — closed (excerpt)
 
 ```markdown
 ---
-id: '042'
+id: '041'
 status: closed
 resolved: '2026-01-16'
 ---
@@ -143,7 +169,8 @@ resolved: '2026-01-16'
 
 ### Decision
 
-Shipped `--format json` on `report`, newline-delimited, default unchanged.
+Shipped `--format table|json` on `report`, newline-delimited, default unchanged. No drift from Recorded
+intent.
 
 ### Alternatives considered
 
@@ -157,7 +184,7 @@ without parsing the table.
 
 ### Verification
 
-Pins: 4/4 passed at `a1b2c3d`.
+Pins: 3/3 passed at `a1b2c3d`.
 ```
 
 The Outcome section's shape follows [DeepSeek Harness Agent Notes](https://github.com/deepseek-ai/deepseek-harness/blob/master/.agents/notes/README.md) (MIT); the prose above is original.
