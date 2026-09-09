@@ -421,6 +421,10 @@ retry loop instead of producing work (incidents.md #10).
 
 #### Verify the report, do not transcribe it
 
+These evidence and gate-ownership rules apply equally to Codex and Claude Code. Use whichever
+command output or retained logs the host exposes; do not require a host-specific validator to run
+the delivery pipeline.
+
 An implementer's summary alone is a claim, not evidence. Inspect the underlying command output or
 retained log, actual test-process exit status, pass/fail/skip counts, and evaluated SHA before accepting
 the result (incidents.md #11). A supervisor need not launch the same command to verify that evidence.
