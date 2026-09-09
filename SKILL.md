@@ -421,8 +421,17 @@ retry loop instead of producing work (incidents.md #10).
 
 #### Verify the report, do not transcribe it
 
-An implementer's summary is a claim, not evidence. Re-run the numeric gates yourself and compare
-counts — a report can round away real, flaky failures (incidents.md #11).
+An implementer's summary alone is a claim, not evidence. Inspect the underlying command output or
+retained log, actual test-process exit status, pass/fail/skip counts, and evaluated SHA before accepting
+the result (incidents.md #11). A supervisor need not launch the same command to verify that evidence.
+Reuse an agent's measured result when those facts are available and the relevant inputs are unchanged.
+If evidence is missing or ambiguous, recover it first; rerun only the smallest gate needed to resolve
+the gap.
+
+Assign one execution owner to each expensive gate before dispatch. Do not have implementer, tester,
+and supervisor each run the same full suite. An already completed qualifying run satisfies that gate;
+independent review and targeted regression checks provide separate scrutiny. Record elapsed time for
+expensive checks so the next dispatch can avoid duplicating their cost.
 
 Your own commands lie the same way, through the shell rather than through prose. An exit code read
 through a pipe is the **last stage's** status, not the command's (incidents.md #12). Read the pass/fail
@@ -616,7 +625,9 @@ the risk it does and does not remove.
 
 ### Phase 7 — Final retest
 
-Call `subagent-tester` again:
+Call `subagent-tester` again for targeted verification. Reuse qualifying full-suite evidence; do not
+launch another full suite merely because the role changed. A broader rerun needs changed inputs that
+can affect it, a failure, an unresolved risk, or an explicit acceptance gate not yet satisfied.
 
 ```
 Ticket: <ticket path>
@@ -772,15 +783,14 @@ after merge; temporary briefs and disposable logs may be removed once that knowl
 
 - "Implementer done" ≠ deliverable. Tester, reviewer, and simplifier must evaluate the same SHA.
   Later documentation-only checkpoints follow the evidence rule in Durable state.
-- Reuse fresh evidence. A gate that passed at this exact SHA with unchanged scope does not get re-run for
-  reassurance. Re-run when the SHA moved, scope changed, or the result was red, subject to the
-  documented status-only checkpoint exception in Durable state.
-- A gate result you did not see is not a result. Numbers from a subagent's summary get re-run before they
-  reach the verdict.
-- Verification is bounded by the oracles. Re-running a numeric gate you did not witness is evidence
-  discipline; re-reading code that already cleared review, or adding a pass no criterion asked for, is
-  over-verification — current models already self-check, so an extra pass compounds cost without changing
-  the verdict. Named in Phase 1 or not run.
+- Reuse verified evidence for unchanged inputs. A new role or documentation-only SHA is not a rerun
+  reason. After code changes, run affected checks; broaden only for failures, unresolved risks, or
+  required gates whose inputs changed. Preserve the original measured SHA in the verdict.
+- Inspect underlying logs and actual process results before reporting agent test counts. Missing
+  evidence calls for recovering the evidence first, not automatically repeating the full suite.
+- Verification is bounded by the oracles. Do not repeat a completed full suite or review for reassurance.
+  After fixes, review only the changed delta and frozen findings for closure and new P0/P1 defects.
+  No new code or unresolved issue means no additional review pass.
 - Once acceptance passes on exact SHA and the blocking set is empty, stop. Do not look for optional improvements.
 - P2 and S2 after freeze go to a follow-up ticket. P3 and S3 are dropped without a ticket.
 - Do not ask the user technical questions answerable from the repo. The Phase 0 intent pass is not an
