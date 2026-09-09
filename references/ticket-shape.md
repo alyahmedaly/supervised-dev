@@ -6,8 +6,8 @@ record when the work closes.
 ## Location
 
 `docs/<program>/tickets/NNN-<slug>.md` — zero-padded three-digit id, kebab-case slug. Follow the repo's
-own ticket directory convention if it already has one. Tracked, and lands in the PR — unlike the ledger,
-which never does.
+own ticket directory convention if it already has one. The ticket and feature handoff are tracked and
+land in the PR. Only optional scratch logs stay outside the repo.
 
 ## Frontmatter
 
@@ -25,7 +25,7 @@ blocked_by: []
 blocks: []
 gate: null # optional: the named gate this ticket satisfies
 supersedes: null # optional: path of the ticket or plan this replaces
-source: # repo-relative paths the agent must read; point, do not paste
+source: # repo-relative evidence index; read shared context first, then role-relevant sources
   - intent/<slug>.md # optional: the upstream intent this ticket serves
   - docs/<program>/plan.md
 effort: S | M # L is not a ticket; split it through a plan first
@@ -54,7 +54,10 @@ resolved: null # set at close
 - `## Verification` — the exact fenced commands; these ARE the named oracles, nothing else.
 - `## Alternatives considered` — optional at open; only what was actually weighed, one bold-led
   paragraph each, with why it lost.
-- `## Notes` — sequencing, boundaries with neighbours.
+- `## Notes` — sequencing, boundaries with neighbours; current status and handoff link if the ticket
+  has no existing `## Current status`. Preserve an existing status section rather than adding a duplicate.
+- `## Updates` — optional until the first substantive update; dated feedback, discoveries, context,
+  and decisions, like issue comments. Append new entries; keep current state in status/handoff.
 - `## Outcome` — added only at close, by the supervisor, same PR. Four H3s: `### Decision` (what
   shipped, present tense, plus any drift from `## Recorded intent`); `### Alternatives considered` (what
   it beat and why — recorded, never invented, say so if none were weighed); `### Consequences` (cost AND
@@ -70,10 +73,39 @@ resolved: null # set at close
 - Recorded intent is provenance, not weighing. `## Alternatives considered` is what the drafter weighed;
   `## Recorded intent` is what the user decided and what the drafter assumed unasked. A recorded decision
   that is testable also earns a `## Pinned rules` entry — intent keeps the why, the pin keeps the check.
-- Code blocks in a ticket are contract targets, labelled as such — never implementation hints.
+- Code blocks in scope/acceptance sections are contract targets, labelled as such — never implementation
+  hints. Evidence snippets in Updates are labelled as observations with their source and measured SHA.
 - Supersession check: search existing tickets and plans for the same scope before writing a new one.
   Extend or set `supersedes:`; never duplicate.
 - Tense: sections above Outcome may speak future; Outcome speaks present.
+
+## Updates — issue-style discussion
+
+The supervisor appends meaningful user feedback, agent findings, new context, and decisions under
+`## Updates`. Keep entries chronological, oldest first, using this lightweight shape:
+
+```markdown
+### YYYY-MM-DD HH:mm UTC — <author or role> — <short subject>
+
+<Feedback, discovery, or decision; one short paragraph.>
+
+Evidence: <path:symbol, command/result with measured SHA, or link; when applicable>
+Follow-up: <action/owner, unresolved question, or superseded entry; when applicable>
+```
+
+Attribute user feedback accurately; preserve the user's words for decisions and overrides. When the
+supervisor records an agent's finding, name that role rather than implying the user said it. Agents
+return updates to the supervisor; they do not gain permission to edit ticket or handoff documents.
+
+Append corrections with a reference to the earlier entry instead of rewriting history. An update is
+discussion, not an automatic scope change: confirmed decisions also update Recorded intent and affected
+contract sections through the existing intent/scope rules. Promote settled facts into the handoff and
+current status at the next safe checkpoint. Keep unresolved questions visible there until resolved.
+Do not copy raw logs or routine phase narration into Updates.
+
+Existing tickets remain valid without this section; add it on the first meaningful contribution.
+Outcome remains the closing decision record. In new tickets, Updates sits after Notes and before
+Outcome; preserve an existing discussion section/location instead of creating a second thread.
 
 ## Worked example — open
 

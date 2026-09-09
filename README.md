@@ -51,6 +51,16 @@ repo conventions) it reads from the repository itself. Hand it a ticket in the s
 `references/ticket-shape.md`, or hand it prose and it drafts the ticket in that shape and waits for your
 approval before Phase 1.
 
+Phase 1 collects shared source context before delegation. The supervisor keeps a tracked
+`docs/<feature>/handoff.md` current at phase boundaries, batch completions, and blocked exits.
+Agents read ticket status, recorded intent, recent updates, and handoff findings before scoped source
+inspection. Broad sweeps may use one optional read-only investigator; ordinary tickets reuse the
+supervisor's recon. Both full and light loops follow these checkpoint rules.
+
+Markdown tickets support issue-style discussion through dated `## Updates` entries for feedback,
+discoveries, and decisions. The supervisor records contributions and folds settled knowledge into
+current status and the handoff, so later agents can resume without replaying the whole discussion.
+
 ## Layout
 
 | Path                            | Contents                                                                 |
