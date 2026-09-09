@@ -229,9 +229,10 @@ Run: `git rev-parse HEAD` to record base SHA.
 
 #### Collect context once, refresh the delta
 
-Before the first tester dispatch, finish the scope recon and persist its findings in
-`docs/<feature>/handoff.md` (see Durable state). Read all sources relevant to the ticket: scoped files,
-callers, tests, configuration, and representative implementations. Record:
+Before the first tester dispatch, finish the scope recon. Persist decisions and resume information in
+the ticket and `docs/<feature>/handoff.md`; put detailed, source-derived assignment context in temporary
+briefs when useful (see Brief hygiene). Read all sources relevant to the ticket: scoped files, callers,
+tests, configuration, and representative implementations. Collect:
 
 - Branch/worktree, base SHA, and the SHA inspected; identify any relevant uncommitted changes separately.
 - Exact source paths and symbols, their responsibilities, and dependencies that affect this ticket.
@@ -246,28 +247,39 @@ callers, tests, configuration, and representative implementations. Record:
 
 The supervisor normally does this during Phase 1. For a broad sweep or costly exploration, it may use
 one read-only investigator/fork supported by the host, scoped to the ticket and these return fields.
-The investigator does not edit files or spawn agents. The supervisor checks its findings and writes
-them into the handoff before delivery delegation. If that capability is unavailable, collect locally;
-no new installed role is required.
+The investigator does not edit files or spawn agents. The supervisor checks its findings and places
+them in the appropriate durable document or temporary brief before delivery delegation. If that
+capability is unavailable, collect locally; no new installed role is required.
 
 Before every tester or implementer dispatch, including batches and fix/retest cycles, compare the
 recorded branch, inspected SHA, and working-tree state with current state. Inspect intervening changes
 and refresh affected context, including allowlists and new tests. Reuse unchanged findings rather than
 repeating the full recon. A resumed Phase 1 still re-derives repository-owned gates and allowlists from
 their owners. Preserve the original base SHA; a branch/base mismatch must be reconciled before using
-the snapshot. Record the updated checkpoint before dispatch.
+the snapshot. Record the updated checkpoint and refresh any affected brief before dispatch.
 
 #### Brief hygiene
 
 Every template below is a contract, not prose. Applies to all four roles:
 
-- **Shared context first.** Every dispatch, including re-delegation, names the ticket and handoff paths.
-  Read ticket status (`Current status`, or `Notes`), `Recorded intent`, recent `Updates`, and handoff
-  findings first, then the source needed for the role's work. The snapshot saves discovery; it does not replace
-  the reviewer's full diff/call-path reading, the simplifier's consumer searches, or live gate evidence.
-- **Point, do not paste.** Give `path:symbol` and compact, SHA-qualified findings in the handoff.
-  Exact allowlist entries are useful observed data; copied source bodies are not. Agents report stale
-  facts or missing context to the supervisor, who maintains the shared documents.
+- **Temporary assignment briefs.** For detailed delegation, write a role/batch brief outside the repo,
+  for example `/tmp/supervised-dev/<ticket>/impl-batch-fg.txt`, and instruct the agent to read it before
+  starting. Include the assignment scope, source-derived values, pattern references, exact commands,
+  and expected return. Shared source findings may serve several briefs. Keep short assignments inline;
+  a brief does not change batch size, commit granularity, role permissions, or gate ownership.
+- **Make briefs traceable.** Include the exact starting SHA, repo/worktree and branch, real ticket and
+  handoff paths, and source references for collected facts. Pin the SHA after the preceding checkpoint;
+  never leave it as "the previous batch's commit". Distinguish observed values from required changes.
+  The ticket owns scope and decisions; a temporary brief cannot silently override them.
+- **Shared context first.** Every dispatch, including re-delegation, names the ticket and handoff paths
+  and any assignment brief. Read the brief first when supplied, then ticket status (`Current status`,
+  or `Notes`), `Recorded intent`, recent `Updates`, and handoff findings before scoped source reading.
+  The snapshot saves discovery; it does not replace the reviewer's full diff/call-path reading, the
+  simplifier's consumer searches, or live gate evidence.
+- **Point, do not paste.** Give `path:symbol` and SHA-qualified findings. Temporary briefs may include
+  exact allowlist entries, commands, or small examples needed for the assignment; avoid copying entire
+  source files or duplicating that recipe into the ticket/handoff. Agents report stale facts or missing
+  context to the supervisor, who maintains the shared documents.
 - **State only the delta on re-delegation.** An agent you already briefed still holds the recipe; re-sending the whole ticket invites it to redo settled work.
 - **Demand exact returns, and name the fields.** SHAs, counts as `passed/total`, verbatim failure text, and the commands actually run. Ban summary adjectives: "suite is green" is not a result; `854/854` is. Ask for the fields and the table explicitly — current models reach for structure less on their own, so an unspecified return format comes back as prose you have to parse.
   Ban _adjectives_, not status lines. Do not write "hold all findings for the final response" or otherwise suppress narration: models already go quiet through long tool chains, and a silent agent is indistinguishable from a stalled one. Ask for a line when it starts, a line when it changes direction, and the exact fields at the end.
@@ -289,7 +301,9 @@ Call `subagent-tester` with this template:
 ```
 Ticket: <ticket path>
 Handoff: <handoff path>
-Read first: ticket status/Notes, Recorded intent, recent Updates, and handoff findings.
+Assignment brief: <path, if used>
+Read first: assignment brief if supplied, then ticket status/Notes, Recorded intent,
+recent Updates, and handoff findings.
 Base SHA: <sha>
 Current head SHA: <checkpoint sha>
 Acceptance criteria: <list>
@@ -329,7 +343,9 @@ Call `subagent-implementer` with this template:
 ```
 Ticket: <ticket path>
 Handoff: <handoff path>
-Read first: ticket status/Notes, Recorded intent, recent Updates, and handoff findings.
+Assignment brief: <path, if used>
+Read first: assignment brief if supplied, then ticket status/Notes, Recorded intent,
+recent Updates, and handoff findings.
 Base SHA: <sha>
 Current head SHA: <checkpoint sha>
 Test commit SHA (do not modify these tests): <tester sha>
@@ -442,7 +458,9 @@ Review the diff from base SHA <base sha> to head SHA <review head sha>.
 
 Ticket: <ticket path>
 Handoff: <handoff path>
-Read first: ticket status/Notes, Recorded intent, recent Updates, and handoff findings.
+Assignment brief: <path, if used>
+Read first: assignment brief if supplied, then ticket status/Notes, Recorded intent,
+recent Updates, and handoff findings.
 Acceptance criteria: <list>
 
 Run: git diff <base sha> <review head sha>
@@ -468,7 +486,9 @@ Audit the diff from base SHA <base sha> to head SHA <review head sha> for simpli
 
 Ticket: <ticket path>
 Handoff: <handoff path>
-Read first: ticket status/Notes, Recorded intent, recent Updates, and handoff findings.
+Assignment brief: <path, if used>
+Read first: assignment brief if supplied, then ticket status/Notes, Recorded intent,
+recent Updates, and handoff findings.
 Acceptance criteria: <list>
 
 Run: git diff <base sha> <review head sha>
@@ -564,7 +584,9 @@ If the blocking set is non-empty, call `subagent-implementer` again:
 ```
 Ticket: <ticket path>
 Handoff: <handoff path>
-Read first: ticket status/Notes, Recorded intent, recent Updates, and handoff findings.
+Assignment brief: <path, if used>
+Read first: assignment brief if supplied, then ticket status/Notes, Recorded intent,
+recent Updates, and handoff findings.
 Fix only these frozen findings: <F1, F2, ...>
 Current head SHA: <sha>
 
@@ -599,7 +621,9 @@ Call `subagent-tester` again:
 ```
 Ticket: <ticket path>
 Handoff: <handoff path>
-Read first: ticket status/Notes, Recorded intent, recent Updates, and handoff findings.
+Assignment brief: <path, if used>
+Read first: assignment brief if supplied, then ticket status/Notes, Recorded intent,
+recent Updates, and handoff findings.
 Retest at SHA: <new head>
 Base SHA: <base sha>
 Run: <failing tests from blocking findings> plus affected regression tests.
@@ -682,8 +706,10 @@ it also fails at base SHA), or flake (state the isolation evidence). Never "prob
 
 The tracked `docs/<feature>/handoff.md` is the authoritative resume point for full and light loops.
 Reuse the existing feature/program handoff and follow the repo's path convention. Create it during
-Phase 1 if absent. Keep shared findings there; the ticket's existing `## Current status`, or `## Notes`
-if it has no status section, carries current status and a link. Acceptance and recorded intent remain
+Phase 1 if absent. Keep current state, evidence, blockers, next action, and essential source/pattern
+references there; detailed source-derived recipes belong in temporary assignment briefs. The ticket's
+existing `## Current status`, or `## Notes` if it has no status section, carries current status and a
+link. Acceptance and recorded intent remain
 authoritative in the ticket. Its `## Updates` holds dated feedback, discoveries, and decisions
 (see `references/ticket-shape.md`); settled facts feed the handoff so new agents need not reconstruct
 current knowledge from the whole discussion.
@@ -693,8 +719,9 @@ and blocked exit, before dispatching the next role. Record the phase about to ru
 then its result when the agent returns. Never write while another writer or same-SHA review is active;
 if interrupted then, retain the in-flight checkpoint and reconcile its agent/commit state on resume.
 
-Use one compact live checkpoint plus the Phase 1 findings; replace stale status rather than appending
-phase recaps. Preserve meaningful discussion in ticket Updates instead. Omit fields that do not apply:
+Use one compact live checkpoint plus the Phase 1 findings needed to resume; replace stale status
+rather than appending phase recaps. Preserve meaningful discussion in ticket Updates instead. Omit
+fields that do not apply:
 
 ```
 Objective / active ticket: (link)
@@ -703,7 +730,8 @@ Base SHA:
 Context inspected at: (SHA; relevant uncommitted changes separately)
 Current phase / active agent or session:
 Recorded intent: (ticket link; new user constraints verbatim until recorded there)
-Source map / allowlists / sample patterns: (Phase 1 findings)
+Source / allowlist owners / sample patterns: (essential references)
+Active brief: (path and starting SHA, if used; reconstructible from sources)
 Units: (unit → exact paths → state → remaining work → commit SHA)
 Test commit SHA:
 Gates: (command / tier → result count → SHA measured at)
@@ -734,9 +762,11 @@ in-flight agent before continuing. Gate lists, warning caps, commands, and allow
 re-derive them on resumed Phase 1 (incidents.md #22), and refresh affected facts between dispatches.
 The handoff narrows discovery; it never makes stale observations authoritative.
 
-Raw logs and scratch notes may live outside the repo, including the adapter's optional scratch path.
-They must not hold the only copy of a decision, blocker, or next action needed to resume. Keep the
-tracked handoff after merge; disposable logs may be removed.
+Temporary briefs, raw logs, and scratch notes may live outside the repo, including the adapter's
+optional scratch path. Briefs must be reconstructible from source plus the ticket and handoff; a link
+to `/tmp` alone is not durable context. Before ending an assignment, the supervisor promotes decisions,
+blockers, and discoveries needed later into ticket Updates or the handoff. Keep the tracked handoff
+after merge; temporary briefs and disposable logs may be removed once that knowledge is preserved.
 
 ## Stopping rules
 

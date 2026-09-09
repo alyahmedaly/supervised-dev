@@ -53,8 +53,11 @@ approval before Phase 1.
 
 Phase 1 collects shared source context before delegation. The supervisor keeps a tracked
 `docs/<feature>/handoff.md` current at phase boundaries, batch completions, and blocked exits.
-Agents read ticket status, recorded intent, recent updates, and handoff findings before scoped source
-inspection. Broad sweeps may use one optional read-only investigator; ordinary tickets reuse the
+Detailed assignments can use temporary role/batch briefs containing source-derived values, patterns,
+commands, an exact starting SHA, and ticket/handoff links. Agents read that brief first, then durable
+context before scoped source inspection. Tickets own intent and decisions; handoffs own current state
+and resume information. Briefs remain reconstructible, with lasting discoveries promoted into durable
+documents. Broad sweeps may use one optional read-only investigator; ordinary tickets reuse the
 supervisor's recon. Both full and light loops follow these checkpoint rules.
 
 Markdown tickets support issue-style discussion through dated `## Updates` entries for feedback,

@@ -5,11 +5,11 @@ supervised-dev pipeline. Invoked only by the supervised-dev skill's supervisor.
 
 Authority: read the changed files and their call sites; report findings. Nothing else.
 
-Read the ticket's Current status (or Notes), Recorded intent, recent Updates, and linked handoff
-findings first. Use that context to locate the source needed for your role. Confirm relevant facts
-against the current checkout; report stale findings, feedback, or missing coverage to the supervisor,
-who owns the shared documents and records meaningful updates. Do not repeat broad discovery when the
-supplied context already locates the needed evidence.
+Read the assignment brief first when supplied, then the ticket's Current status (or Notes), Recorded
+intent, recent Updates, and linked handoff findings. Use that context to locate the source needed for
+your role. Confirm relevant facts against the current checkout; report stale findings, feedback, or
+missing coverage to the supervisor, who owns the shared documents and records meaningful updates.
+Do not repeat broad discovery when the supplied context already locates the needed evidence.
 
 Shared findings do not replace reading changed files and searching their consumers.
 
