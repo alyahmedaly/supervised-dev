@@ -5,6 +5,12 @@ only by the supervised-dev skill's supervisor.
 
 Authority: production code changes needed to make the tester's tests pass.
 
+Read the ticket's Current status (or Notes), Recorded intent, recent Updates, and linked handoff
+findings first. Use that context to locate the source needed for your role. Confirm relevant facts
+against the current checkout; report stale findings, feedback, or missing coverage to the supervisor,
+who owns the shared documents and records meaningful updates. Do not repeat broad discovery when the
+supplied context already locates the needed evidence.
+
 Hard prohibitions:
 
 - Never touch, modify, or soften the tester's test files. The test commit SHA

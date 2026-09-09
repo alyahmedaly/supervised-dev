@@ -122,7 +122,9 @@ column is the lever.
 
 Agent definitions live in `~/.claude/agents/subagent-*.md`; if the session's agent list does not show them, stop and tell the user before Phase 2.
 
-You coordinate. You do not edit files yourself unless the user explicitly asks.
+You coordinate and maintain the ticket, plan, and handoff documents. Production and test edits stay
+with their assigned roles unless the user explicitly asks you to make them. Documentation updates are
+serial too: do not write while another writer or a same-SHA review is active.
 
 ### Runtime adapter
 
@@ -137,7 +139,8 @@ brief to a fresh agent." Sources are cited per cell; a cell with no confirmed so
 | Read-only role permissions           | `tools:` list omits Edit/Write, plus `permissionMode: dontAsk` | `-s read-only` (sandbox blocks writes outright). Source: local `codex exec --help`.                                                                                                                                                                                                                                                                 |
 | Model per role                       | `sonnet` (all four roles)                                      | unconfirmed — verify. No per-role Codex model recommendation found in R2/R4; only generic example ids (`gpt-5.6-terra` in docs, `gpt-5.3-codex-spark` in the local `codex-cli-runtime` skill for an unrelated "spark" mapping). Do not guess a model id.                                                                                            |
 | Reasoning effort                     | No knob; the Model column is the lever                         | `-c model_reasoning_effort=<value>`, values `minimal, low, medium, high, xhigh`. Value vocabulary confirmed via local skill `.../codex/skills/codex-cli-runtime/SKILL.md` (`--effort` wrapper flag). Exact TOML key spelling `model_reasoning_effort` is unconfirmed — verify: `developers.openai.com/codex/config` returned HTTP 404 when fetched. |
-| Ledger path                          | Session scratchpad (see Durable state)                         | `${TMPDIR:-/tmp}/supervised-dev/<branch>/`                                                                                                                                                                                                                                                                                                          |
+| Handoff path                        | `docs/<feature>/handoff.md`, following repo convention          | Same tracked path; see Durable state |
+| Optional scratch logs               | Outside the repo                                              | `${TMPDIR:-/tmp}/supervised-dev/<branch>/` |
 | Continue a role agent across batches | `SendMessage` to the same agent                                | No native resume-a-role feature (R3). Use `codex exec resume --last` (or by session id) on that role's own subprocess session, sending only the delta instruction. Source: local `codex exec --help` ("resume Resume a previous session by id or pick the most recent with --last").                                                                |
 
 Details, unconfirmed items, and a Codex smoke test: `references/codex-host.md`.
@@ -163,9 +166,9 @@ step a role up only when the work demands it.
   without errors?") and base64 blobs in tool output are the known triggers: ask "are there bugs in this",
   and never paste base64 into a brief. A refusal is a phrasing defect in your brief, not a finding, and
   not evidence about the code.
-- **Four roles is the cap.** No fifth agent, and no subagent spawning its own. Current models delegate
-  readily; a phase that feels like it needs another delegate has an underspecified brief, so fix the
-  brief.
+- **Four delivery roles is the cap.** No subagent spawning its own. The supervisor may dispatch one
+  read-only context investigator for broad sweeps or costly exploration, before delivery agents run
+  (see Phase 1). This is an optional context pass, not a fifth delivery role or another review gate.
 
 Effort-specific guidance below applies where the runtime exposes an effort knob (Codex); on Claude Code
 pick the model tier instead.
@@ -201,7 +204,7 @@ Inspect the repository to understand current state. Clarify only decisions with 
 - Oracle per criterion: the exact command or state check that decides it. A criterion with no oracle is a wish — give it one or move it out of scope. You stop when the oracles pass, not when the work looks finished. When the build emits nondeterministic artifact names, the oracle must normalize before comparing (incidents.md #3).
 - CI trigger map: read the repo's own workflow files and record what actually fires the gates Phase 8 depends on — including the branch filters, not just the event names. A push can fire no CI at all if the filters exclude it (incidents.md #4); read the filters in Phase 1, do not infer them from the event list.
 - Capability preflight: confirm the tools the plan leans on actually work here, before planning around them — package registry reachability, auth for any host CLI, worktree cleanliness, write access (incidents.md #23). Never route around a failure by hand-editing a lockfile.
-- Working branch or worktree: create it before recording base SHA, named per repo convention, and record the branch name in the ledger. A fresh worktree has no `node_modules`, so a bare `npx <tool>` inside it can resolve a different tool version than the main checkout — run formatters and linters from an installed tree, or install first.
+- Working branch or worktree: create it before recording base SHA, named per repo convention, and record the branch name in the handoff. A fresh worktree has no `node_modules`, so a bare `npx <tool>` inside it can resolve a different tool version than the main checkout — run formatters and linters from an installed tree, or install first.
 
 A ticket in the shape of `references/ticket-shape.md` already answers most of the above:
 
@@ -213,7 +216,7 @@ A ticket in the shape of `references/ticket-shape.md` already answers most of th
 | Pinned rules          | Architecture rules to pin                 |
 | Acceptance            | Acceptance criteria, oracle per criterion |
 | Verification          | Verification command, full gate set seed  |
-| `source:`             | Files to read                             |
+| `source:`             | Evidence index for scoped reading         |
 | `blocked_by`/`blocks` | Sequencing                                |
 | `mode`/`effort`       | Eligibility                               |
 
@@ -224,11 +227,47 @@ rest are constraints you carry into the briefs, not tests.
 
 Run: `git rev-parse HEAD` to record base SHA.
 
+#### Collect context once, refresh the delta
+
+Before the first tester dispatch, finish the scope recon and persist its findings in
+`docs/<feature>/handoff.md` (see Durable state). Read all sources relevant to the ticket: scoped files,
+callers, tests, configuration, and representative implementations. Record:
+
+- Branch/worktree, base SHA, and the SHA inspected; identify any relevant uncommitted changes separately.
+- Exact source paths and symbols, their responsibilities, and dependencies that affect this ticket.
+- Current allowlist contents with their owning file/symbol when applicable; label these as observed
+  state, separate from the ticket's required end state.
+- For sweeps, a per-service/unit table: unit, exact paths, migration state, remaining work, and commit
+  SHA when completed. Include every target, including blocked and untouched units.
+- Sample implementation and test pattern references (`path:symbol`), with exceptions called out.
+  Once the tracer passes its gates, make it the canonical reference for later batches.
+- Phase 1 gate commands and tiers, expected-red inventory, CI triggers, preflight results, and gaps.
+  Mark missing coverage explicitly; do not imply an unread source was inspected.
+
+The supervisor normally does this during Phase 1. For a broad sweep or costly exploration, it may use
+one read-only investigator/fork supported by the host, scoped to the ticket and these return fields.
+The investigator does not edit files or spawn agents. The supervisor checks its findings and writes
+them into the handoff before delivery delegation. If that capability is unavailable, collect locally;
+no new installed role is required.
+
+Before every tester or implementer dispatch, including batches and fix/retest cycles, compare the
+recorded branch, inspected SHA, and working-tree state with current state. Inspect intervening changes
+and refresh affected context, including allowlists and new tests. Reuse unchanged findings rather than
+repeating the full recon. A resumed Phase 1 still re-derives repository-owned gates and allowlists from
+their owners. Preserve the original base SHA; a branch/base mismatch must be reconciled before using
+the snapshot. Record the updated checkpoint before dispatch.
+
 #### Brief hygiene
 
 Every template below is a contract, not prose. Applies to all four roles:
 
-- **Point, do not paste.** Give `path:symbol` and let the agent read it. Pasted file bodies go stale between phases and cost the same tokens twice.
+- **Shared context first.** Every dispatch, including re-delegation, names the ticket and handoff paths.
+  Read ticket status (`Current status`, or `Notes`), `Recorded intent`, recent `Updates`, and handoff
+  findings first, then the source needed for the role's work. The snapshot saves discovery; it does not replace
+  the reviewer's full diff/call-path reading, the simplifier's consumer searches, or live gate evidence.
+- **Point, do not paste.** Give `path:symbol` and compact, SHA-qualified findings in the handoff.
+  Exact allowlist entries are useful observed data; copied source bodies are not. Agents report stale
+  facts or missing context to the supervisor, who maintains the shared documents.
 - **State only the delta on re-delegation.** An agent you already briefed still holds the recipe; re-sending the whole ticket invites it to redo settled work.
 - **Demand exact returns, and name the fields.** SHAs, counts as `passed/total`, verbatim failure text, and the commands actually run. Ban summary adjectives: "suite is green" is not a result; `854/854` is. Ask for the fields and the table explicitly — current models reach for structure less on their own, so an unspecified return format comes back as prose you have to parse.
   Ban _adjectives_, not status lines. Do not write "hold all findings for the final response" or otherwise suppress narration: models already go quiet through long tool chains, and a silent agent is indistinguishable from a stalled one. Ask for a line when it starts, a line when it changes direction, and the exact fields at the end.
@@ -248,8 +287,11 @@ Every template below is a contract, not prose. Applies to all four roles:
 Call `subagent-tester` with this template:
 
 ```
-Ticket: <description>
+Ticket: <ticket path>
+Handoff: <handoff path>
+Read first: ticket status/Notes, Recorded intent, recent Updates, and handoff findings.
 Base SHA: <sha>
+Current head SHA: <checkpoint sha>
 Acceptance criteria: <list>
 Out of scope: <list>
 Architecture rules to pin: <list from Phase 1>
@@ -285,8 +327,11 @@ the simplifier, and it is cheaper to reject it here.
 Call `subagent-implementer` with this template:
 
 ```
-Ticket: <description>
+Ticket: <ticket path>
+Handoff: <handoff path>
+Read first: ticket status/Notes, Recorded intent, recent Updates, and handoff findings.
 Base SHA: <sha>
+Current head SHA: <checkpoint sha>
 Test commit SHA (do not modify these tests): <tester sha>
 Acceptance criteria: <list>
 Out of scope: <list>
@@ -387,15 +432,20 @@ orphaned fork point can look like agent damage that was never there (incidents.m
 
 ### Phase 4 — Review and simplify (parallel, same SHA)
 
+Finish the handoff checkpoint first. Use its committed head as `<review head sha>` in both briefs;
+the implementer's returned SHA remains the SHA of its own changes and measured checks.
+
 Call `subagent-reviewer` with this template:
 
 ```
-Review the diff from base SHA <base sha> to head SHA <implementer sha>.
+Review the diff from base SHA <base sha> to head SHA <review head sha>.
 
-Ticket: <description>
+Ticket: <ticket path>
+Handoff: <handoff path>
+Read first: ticket status/Notes, Recorded intent, recent Updates, and handoff findings.
 Acceptance criteria: <list>
 
-Run: git diff <base sha> <implementer sha>
+Run: git diff <base sha> <review head sha>
 Read the full diff and surrounding call paths.
 Review production code and tests together.
 Check error paths, edge cases, and false-green test risk.
@@ -414,12 +464,14 @@ For each finding: file, line, severity, problem, high-level fix.
 Call `subagent-simplifier` with this template:
 
 ```
-Audit the diff from base SHA <base sha> to head SHA <implementer sha> for simplifications.
+Audit the diff from base SHA <base sha> to head SHA <review head sha> for simplifications.
 
-Ticket: <description>
+Ticket: <ticket path>
+Handoff: <handoff path>
+Read first: ticket status/Notes, Recorded intent, recent Updates, and handoff findings.
 Acceptance criteria: <list>
 
-Run: git diff <base sha> <implementer sha>
+Run: git diff <base sha> <review head sha>
 Read the changed files in full plus their call sites. Follow the code; do not guess.
 
 Find surface this diff ADDED that costs more than it buys:
@@ -510,6 +562,9 @@ body. The PR is opened once; later fix cycles push to the same branch, not a new
 If the blocking set is non-empty, call `subagent-implementer` again:
 
 ```
+Ticket: <ticket path>
+Handoff: <handoff path>
+Read first: ticket status/Notes, Recorded intent, recent Updates, and handoff findings.
 Fix only these frozen findings: <F1, F2, ...>
 Current head SHA: <sha>
 
@@ -542,6 +597,9 @@ the risk it does and does not remove.
 Call `subagent-tester` again:
 
 ```
+Ticket: <ticket path>
+Handoff: <handoff path>
+Read first: ticket status/Notes, Recorded intent, recent Updates, and handoff findings.
 Retest at SHA: <new head>
 Base SHA: <base sha>
 Run: <failing tests from blocking findings> plus affected regression tests.
@@ -549,8 +607,9 @@ No new scope. No new assertions.
 Return: deliverable or remaining blocker with exact test names and failure output.
 ```
 
-After the tester retest, dispatch the reviewer and the simplifier together on the new head SHA. Scope the
-reviewer to `git diff <previous head sha> <new head sha>` plus the frozen-finding list: it judges whether
+After the tester retest and handoff checkpoint, dispatch the reviewer and the simplifier together on
+the resulting committed head SHA, with the ticket and handoff paths in both briefs. Scope the
+reviewer to `git diff <previous reviewed sha> <review head sha>` plus the frozen-finding list: it judges whether
 the fix closed each frozen finding, and whether the fix itself introduced a new P0/P1. If this was cycle 1
 and a cycle 2 follows, re-run Phase 4 on the new head SHA. The simplifier sees each round, including the
 deletions it asked for.
@@ -562,7 +621,8 @@ Deliverable requires all of:
 - All ticket acceptance criteria satisfied
 - No unresolved P0/P1 findings
 - No unresolved `in-diff` S1 findings
-- Tester's original tests pass at exact head SHA without modification
+- Tester's original tests pass at exact evaluated head SHA without modification; any later
+  documentation-only checkpoint meets the Durable state evidence rule
 - Worktree clean, commits pushed
 - PR open (if CI needs one)
 - CI green or external blocker explicitly named
@@ -620,53 +680,71 @@ it also fails at base SHA), or flake (state the isolation evidence). Never "prob
 
 ## Durable state
 
-Long tickets outlive one context. Keep one compact ledger, at the ledger path from the adapter, and
-update it at every phase boundary. A ledger written at the end is a report, and reports do not survive
-interrupts.
+The tracked `docs/<feature>/handoff.md` is the authoritative resume point for full and light loops.
+Reuse the existing feature/program handoff and follow the repo's path convention. Create it during
+Phase 1 if absent. Keep shared findings there; the ticket's existing `## Current status`, or `## Notes`
+if it has no status section, carries current status and a link. Acceptance and recorded intent remain
+authoritative in the ticket. Its `## Updates` holds dated feedback, discoveries, and decisions
+(see `references/ticket-shape.md`); settled facts feed the handoff so new agents need not reconstruct
+current knowledge from the whole discussion.
+
+The supervisor updates the handoff at every phase boundary, batch completion, fix-cycle transition,
+and blocked exit, before dispatching the next role. Record the phase about to run before handing off,
+then its result when the agent returns. Never write while another writer or same-SHA review is active;
+if interrupted then, retain the in-flight checkpoint and reconcile its agent/commit state on resume.
+
+Use one compact live checkpoint plus the Phase 1 findings; replace stale status rather than appending
+phase recaps. Preserve meaningful discussion in ticket Updates instead. Omit fields that do not apply:
 
 ```
-Objective:
+Objective / active ticket: (link)
+Branch / worktree:
 Base SHA:
-Branch:
-Current phase:
-Decisions: (user's words + reason)
-Units done: (unit → commit SHA)
-Gates: (gate → result count → SHA measured at)
-Expected-red:
-Failed approaches:
-Open findings:
+Context inspected at: (SHA; relevant uncommitted changes separately)
+Current phase / active agent or session:
+Recorded intent: (ticket link; new user constraints verbatim until recorded there)
+Source map / allowlists / sample patterns: (Phase 1 findings)
+Units: (unit → exact paths → state → remaining work → commit SHA)
+Test commit SHA:
+Gates: (command / tier → result count → SHA measured at)
+Expected-red / CI triggers / preflight gaps:
+Failed approaches: (reason; exact error where useful)
+Frozen / open findings:
+Fix cycles used:
+Delivery state: (pushed SHA, PR, CI status and SHA)
+Blockers:
 Next action:
 ```
 
-Keep it calibrated. Models pad written artifacts by default, and a ledger that grows summary sections is a
-report again: facts, numbers, SHAs, one line each, no recap of what the phases were.
+Commit ticket/handoff changes at clean checkpoints before delegation, staging only supervisor-owned
+scope. Use the resulting committed head in the next brief; keep the original base and test commit
+SHAs pinned. Finish updates before same-SHA review starts, and wait for both read-only roles before
+recording their results. Follow repo formatting checks for tracked documents. A blocked checkpoint
+must state any commit/push failure rather than hide unfinished local state.
 
-The ledger is what survives compaction, so it must carry what a summary drops. When context is compacted —
-by you or by the harness — the entries that get lost first are exactly the ones you cannot re-derive:
-constraints and decisions in the user's own words, approaches already tried and abandoned with the reason,
-where things stand right now, what is still open, and exact details like SHAs, counts, and error text.
-Write those verbatim in the ledger rather than trusting a summary to preserve them. Your own reasoning
-compresses freely; what the user asked for and what a gate measured do not.
+Measured facts keep their original SHA. A documentation-only checkpoint does not turn earlier test or
+review evidence into evidence measured at its new SHA. Verify the documentation delta separately;
+carry earlier evidence forward only after confirming that the delta changes only ticket/plan/handoff
+status or findings and leaves that check's inputs unchanged. Otherwise rerun affected checks. State
+both the measured SHA and any later documentation-only head in the verdict; do not create an endless
+commit/retest loop merely to write a result into the handoff.
 
-Two rules make a ledger safe to inherit:
+On resume, read the ticket and handoff first, then confirm branch, HEAD, working-tree changes, and any
+in-flight agent before continuing. Gate lists, warning caps, commands, and allowlists belong to source:
+re-derive them on resumed Phase 1 (incidents.md #22), and refresh affected facts between dispatches.
+The handoff narrows discovery; it never makes stale observations authoritative.
 
-- **Record measured facts with their SHA.** A gate result with no SHA cannot be reused and cannot be trusted.
-- **Re-derive, never copy, anything the repo owns.** Gate lists, lint warning caps, test commands, and
-  allowlists all drift. An inherited gate list is a hint about what mattered last time, not the gate set —
-  recompute it in Phase 1 (incidents.md #22).
-
-Keep the ledger at the ledger path from the adapter, never in the repo — not even untracked at the
-worktree root. Never a tracked doc reviewers must read past. Durable conclusions belong in the ticket or
-its follow-up; delete the ledger when the PR merges. Repo-wide formatters and linters typically scan the
-**working tree**, not the index — every file on disk, tracked or not — so a ledger left in the repo can
-fail the pre-commit or pre-push hook on its own formatting; a ledger path outside the repo avoids the
-whole class. The ticket is tracked and ships in the PR; the ledger never does.
+Raw logs and scratch notes may live outside the repo, including the adapter's optional scratch path.
+They must not hold the only copy of a decision, blocker, or next action needed to resume. Keep the
+tracked handoff after merge; disposable logs may be removed.
 
 ## Stopping rules
 
 - "Implementer done" ≠ deliverable. Tester, reviewer, and simplifier must evaluate the same SHA.
+  Later documentation-only checkpoints follow the evidence rule in Durable state.
 - Reuse fresh evidence. A gate that passed at this exact SHA with unchanged scope does not get re-run for
-  reassurance. Re-run only when the SHA moved, scope changed, or the result was red.
+  reassurance. Re-run when the SHA moved, scope changed, or the result was red, subject to the
+  documented status-only checkpoint exception in Durable state.
 - A gate result you did not see is not a result. Numbers from a subagent's summary get re-run before they
   reach the verdict.
 - Verification is bounded by the oracles. Re-running a numeric gate you did not witness is evidence
